@@ -6,9 +6,13 @@ from config import DB_PATH, DATABASE_URL
 
 logger = logging.getLogger(__name__)
 
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-
 IS_POSTGRES = bool(DATABASE_URL and DATABASE_URL.startswith(("postgres://", "postgresql://")))
+
+try:
+    if not IS_POSTGRES:
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
 
 if IS_POSTGRES:
     import psycopg2

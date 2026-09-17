@@ -14,7 +14,12 @@ from database.db import (
     get_quarterly_entities, get_entity_references
 )
 
-app = Flask(__name__)
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(_BASE_DIR, "templates"),
+    static_folder=os.path.join(_BASE_DIR, "static")
+)
 app.secret_key = FLASK_SECRET_KEY
 
 _scrape_running = False
