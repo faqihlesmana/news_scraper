@@ -164,5 +164,6 @@ LOG_FILE = BASE_DIR / "logs" / "scraper.log"
 
 # ── Flask ─────────────────────────────────────────────────
 FLASK_SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "pohuwato-news-2026-secret")
-FLASK_PORT       = int(os.environ.get("PORT", 5555))
+_port_env = os.environ.get("PORT", "").strip()
+FLASK_PORT = int(_port_env) if _port_env.isdigit() else 5555
 FLASK_DEBUG      = os.environ.get("FLASK_DEBUG", "false").lower() == "true"

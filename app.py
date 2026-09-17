@@ -49,6 +49,11 @@ def index():
     return render_template("index.html", sources=SOURCES)
 
 
+@app.route("/favicon.ico")
+def favicon():
+    return "", 204
+
+
 @app.route("/triwulan")
 def page_triwulan():
     """Halaman Dashboard Analisis Event & Lembaga Triwulanan."""
