@@ -262,7 +262,7 @@ def scrape_all(max_pages: int = 3, use_ai: bool = True,
                 if news_row:
                     news_id = news_row["id"]
                     pub_date = news_row["published_at"] or art.get("published_at")
-                    ent_res = extract_entities_from_article(title, content, backend="gemini" if use_gemini else None)
+                    ent_res = extract_entities_from_article(title, content)
                     save_extracted_entities_with_dedup(
                         news_id=news_id,
                         events=ent_res.get("events", []),

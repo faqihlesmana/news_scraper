@@ -179,9 +179,20 @@ def _clean_extracted_data(data: dict) -> dict:
 def extract_entities_from_article(title: str, content: str, backend: Optional[str] = None) -> dict:
     """
     Fungsi entry point untuk ekstraksi entitas sesuai backend aktif.
+    Jika hybrid: gunakan Ollama lokal (Qwen) agar hemat kuota Gemini. Fallback ke Gemini jika Ollama offline.
     """
     used_backend = backend or AI_BACKEND
-    if used_backend in ("gemini", "hybrid") and GEMINI_API_KEY:
-        return extract_entities_gemini(title, content)
+    if used_backend == "gemini":
+        if GEMINI_API_KEY:
+            return extract_entities_gemini(title, content)
+        return extract_entities_ollama(title, content)
+    elif used_backend == "hybrid":
+        from services.ollama_processor import is_ollama_running
+        if is_ollama_running():
+            return extract_entities_ollama(title, content)
+        elif GEMINI_API_KEY:
+            logger.info("[EntityExtractor] Ollama offline, fallback ke Gemini")
+            return extract_entities_gemini(title, content)
+        return {"events": [], "companies": []}
     else:
         return extract_entities_ollama(title, content)
