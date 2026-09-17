@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="starry" data-mode="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pohuwato News Intelligence Dashboard</title>
+  <meta name="description" content="Dashboard monitoring dan scraping berita Kabupaten Pohuwato dari 12 sumber media secara otomatis.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/themes.css">
+  <script>
+    /* Prevent flash of wrong theme on load */
+    (function(){
+      var t = localStorage.getItem('app-theme') || 'starry';
+      var m = localStorage.getItem('app-mode')  || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+      document.documentElement.setAttribute('data-mode', m);
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ══ NAVBAR ══ -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <div class="nav-logo">📡</div>
+    <div>
+      <div class="nav-title">Pohuwato News Intelligence</div>
+      <div class="nav-subtitle">Dashboard Scraping Berita Otomatis</div>
+    </div>
+  </div>
+
+  <div class="nav-actions">
+    <a href="/triwulan" class="btn btn-ghost btn-sm" style="color:var(--blue-accent);border-color:#bfdbfe;background:#eff6ff;">🎪 Analisis Triwulan (Event & Lembaga)</a>
+    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted)">
+      <div class="scrape-status-dot" id="scrape-dot"></div>
+      <span id="scrape-status-text">Standby</span>
+    </div>
+    <div id="ollama-status" style="font-size:12px;color:var(--text-muted)">● Cek Ollama…</div>
+    <button class="btn btn-ghost btn-sm" id="btn-refresh">🔄 Refresh</button>
+    <button class="btn btn-emerald btn-sm" id="btn-scrape" onclick="openScrapeModal()">⚡ Scrape Sekarang</button>
+  </div>
+</nav>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+
+  <!-- Stats Grid -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">📰</div>
+      <div class="stat-value" id="stat-total">—</div>
+      <div class="stat-label">Total Berita</div>
+    </div>
+    <div class="stat-card gold">
+      <div class="stat-icon">🌅</div>
+      <div class="stat-value" id="stat-today">—</div>
+      <div class="stat-label">Berita Hari Ini</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-icon">🌐</div>
+      <div class="stat-value" id="stat-sources">—</div>
+      <div class="stat-label">Sumber Aktif</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🏷️</div>
+      <div class="stat-value" id="stat-cats">—</div>
+      <div class="stat-label">Kategori</div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="section-header">
+        <div class="section-title"><span class="dot"></span>Berita per Sumber</div>
+      </div>
+      <canvas id="chart-sources"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <div class="section-header">
+        <div class="section-title"><span class="dot"></span>Distribusi Kategori</div>
+      </div>
+      <canvas id="chart-categories"></canvas>
+    </div>
+  </div>
+
+  <!-- Recent Scrape Logs -->
+  <div style="margin-bottom:28px;">
+    <div class="section-header">
+      <div class="section-title"><span class="dot"></span>Log Scraping Terkini</div>
+    </div>
+    <div class="chart-card" style="padding:16px 22px">
+      <div id="recent-logs">
+        <div class="skeleton" style="height:14px;margin-bottom:10px"></div>
+        <div class="skeleton" style="height:14px;margin-bottom:10px;width:80%"></div>
+        <div class="skeleton" style="height:14px;width:60%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- News Table -->
+  <div>
+    <div class="section-header" style="margin-bottom:12px;">
+      <div class="section-title"><span class="dot"></span>Daftar Berita</div>
+      <div style="font-size:12px;color:var(--text-muted)" id="result-count"></div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <div class="search-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" id="search-input" placeholder="Cari judul atau konten berita…">
+      </div>
+      <select class="filter-select" id="filter-source">
+        <option value="">Semua Sumber</option>
+      </select>
+      <select class="filter-select" id="filter-category">
+        <option value="">Lapus (Semua)</option>
+      </select>
+      <select class="filter-select" id="filter-exp-category">
+        <option value="">Pengeluaran (Semua)</option>
+      </select>
+      <select class="filter-select" id="filter-feedback">
+        <option value="">Feedback (Semua)</option>
+        <option value="sip">👍 Sip (Kategori Benar)</option>
+        <option value="gasip">👎 Ga Sip (Kategori Salah)</option>
+        <option value="none">⚪ Belum Ada Feedback</option>
+      </select>
+
+      <button class="btn btn-ghost btn-sm" id="btn-hide-irrelevant" onclick="toggleHideIrrelevant()" title="Sembunyikan berita yang tidak relevan dengan PDRB">
+        🚫 Sembunyikan Tidak Relevan
+      </button>
+      <button class="btn btn-ghost btn-sm" id="btn-view-irrelevant" onclick="openIrrelevantModal()" title="Lihat daftar berita tidak relevan">
+        👁 Lihat Tidak Relevan <span id="irrelevant-total-count" style="background:rgba(239,68,68,0.15);color:#ef4444;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:4px">0</span>
+      </button>
+
+
+      <select class="filter-select" id="filter-quarter">
+        <option value="">Semua Periode</option>
+        <option value="Q1">Triwulan I (Jan–Mar)</option>
+        <option value="Q2">Triwulan II (Apr–Jun)</option>
+        <option value="Q3">Triwulan III (Jul–Sep)</option>
+        <option value="Q4">Triwulan IV (Okt–Des)</option>
+      </select>
+
+      <!-- Compact Custom Date Picker Popover -->
+      <div class="date-popover-wrapper">
+        <button class="btn btn-ghost btn-sm" id="btn-toggle-date-popover" type="button">
+          📅 <span id="date-popover-label">Rentang Tanggal</span>
+        </button>
+
+        <div class="date-popover" id="date-popover">
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-primary)">Pilih Rentang Tanggal</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div>
+              <label class="form-label" style="font-size:10px;margin-bottom:2px">Tanggal Mulai</label>
+              <input type="date" class="filter-select" id="filter-start-date" style="width:100%;padding:6px">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:10px;margin-bottom:2px">Tanggal Selesai</label>
+              <input type="date" class="filter-select" id="filter-end-date" style="width:100%;padding:6px">
+            </div>
+            <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px">
+              <button class="btn btn-ghost btn-sm" style="padding:4px 8px;font-size:11px" id="btn-clear-date">Clear</button>
+              <button class="btn btn-emerald btn-sm" style="padding:4px 10px;font-size:11px" id="btn-apply-date">Terapkan</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-ghost btn-sm" id="btn-reset-filter">✕ Reset</button>
+      <button class="btn btn-gold btn-sm" id="btn-export-excel" onclick="exportExcel()">📊 Export Excel</button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Judul Berita</th>
+              <th>Sumber</th>
+              <th>Lapus</th>
+              <th>Pengeluaran</th>
+              <th>Tanggal</th>
+              <th>Feedback</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="news-tbody">
+            <!-- filled by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        <div class="pagination-info" id="pagination-info"></div>
+        <div class="pagination-controls" id="pagination-controls"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ══ ARTICLE DETAIL MODAL ══ -->
+<div class="modal-overlay" id="article-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-title">—</h2>
+      <button class="modal-close" onclick="closeArticle()">✕</button>
+    </div>
+    <div class="modal-meta" id="modal-meta"></div>
+    <div id="modal-summary" style="padding:0 24px;display:none"></div>
+    <div class="modal-body" id="modal-content-body"></div>
+    <div id="modal-tags" style="padding:0 24px 16px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeArticle()">Tutup</button>
+      <button class="btn btn-ghost btn-sm" id="btn-copy-link" onclick="copyArticleLink()">📋 Salin Link</button>
+      <a class="btn btn-emerald btn-sm" id="modal-link" href="#" target="_blank" rel="noopener">↗ Buka Berita Asli</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCRAPE TRIGGER MODAL ══ -->
+<div class="modal-overlay" id="scrape-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h2 class="modal-title">⚡ Mulai Scraping Manual</h2>
+      <button class="modal-close" onclick="closeScrapeModal()">✕</button>
+    </div>
+    <div class="scrape-form">
+
+      <!-- Source selection -->
+      <div class="form-group">
+        <label class="form-label">Pilih Sumber Media (kosongkan = semua)</label>
+        <div class="checkbox-group">
+          {% for s in sources %}
+          <label class="checkbox-item">
+            <input type="checkbox" class="source-checkbox" value="{{ s.slug }}">
+            <span>{{ s.name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Max pages -->
+      <div class="form-group">
+        <label class="form-label">Halaman Maksimum per Sumber</label>
+        <div class="range-wrapper">
+          <input type="range" id="pages-range" class="range-input" min="1" max="10" value="3">
+          <span class="range-value" id="pages-val">3</span>
+          <span style="font-size:12px;color:var(--text-muted)">halaman</span>
+        </div>
+      </div>
+
+      <!-- Gemini toggle -->
+      <div class="form-group">
+        <label class="form-label">Kategorisasi Otomatis (Gemini AI)</label>
+        <div class="toggle-wrapper">
+          <div class="toggle" id="gemini-toggle" onclick="toggleGemini(this)"></div>
+          <span style="font-size:13px;color:var(--text-secondary)">Aktifkan Gemini API untuk mengategorikan berita secara otomatis</span>
+        </div>
+        <div style="margin-top:8px;padding:10px 12px;background:var(--gold-glow);border:1px solid rgba(245,158,11,0.2);border-radius:8px;font-size:12px;color:var(--gold)">
+          ⚠️ Pastikan <strong>GEMINI_API_KEY</strong> sudah diset sebagai environment variable sebelum mengaktifkan fitur ini.
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+        <button class="btn btn-ghost" onclick="closeScrapeModal()">Batal</button>
+        <button class="btn btn-emerald" onclick="startScrape()">⚡ Mulai Scraping</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FEEDBACK CORRECTION MODAL ══ -->
+<div class="modal-overlay" id="feedback-modal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <div>
+        <h2 class="modal-title">👎 Koreksi Kategori (Ga Sip)</h2>
+
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px" id="feedback-article-title"></div>
+      </div>
+      <button class="modal-close" onclick="closeFeedbackModal()">✕</button>
+    </div>
+    <div style="padding:20px 24px">
+      <!-- Tab Switch -->
+      <div class="tab-switch">
+        <button class="tab-btn active" data-tab="lu" onclick="switchFeedbackTab('lu')">🏬 Lapangan Usaha</button>
+        <button class="tab-btn" data-tab="pe" onclick="switchFeedbackTab('pe')">💰 Pengeluaran</button>
+      </div>
+
+      <!-- LU Tab -->
+      <div class="tab-content active" id="tab-lu">
+        <div class="form-group">
+          <label class="form-label">Sektor PDRB Lapangan Usaha</label>
+          <select class="filter-select" id="fb-lu-sector" style="width:100%" onchange="onFbLuSectorChange()"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sub-Kategori</label>
+          <select class="filter-select" id="fb-lu-sub" style="width:100%"></select>
+        </div>
+      </div>
+
+      <!-- PE Tab -->
+      <div class="tab-content" id="tab-pe">
+        <div class="form-group">
+          <label class="form-label">Sektor PDRB Pengeluaran</label>
+          <select class="filter-select" id="fb-pe-sector" style="width:100%" onchange="onFbPeSectorChange()"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sub-Kategori</label>
+          <select class="filter-select" id="fb-pe-sub" style="width:100%"></select>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
+        <button class="btn btn-ghost" onclick="closeFeedbackModal()">Batal</button>
+        <button class="btn btn-emerald" onclick="submitFeedbackCorrection()">✅ Kirim Saran</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ IRRELEVANT ARTICLES MODAL ══ -->
+<div class="modal-overlay" id="irrelevant-modal">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <div>
+        <h2 class="modal-title">🚫 Berita Tidak Relevan</h2>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Berita yang dikategorikan Tidak Relevan pada PDRB Lapangan Usaha atau Pengeluaran</div>
+      </div>
+      <button class="modal-close" onclick="closeIrrelevantModal()">✕</button>
+    </div>
+    <div style="padding:0 24px 8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border)">
+      <input type="text" id="irrelevant-search" class="search-input" placeholder="Cari judul…" style="flex:1;min-width:180px;padding:6px 10px;font-size:12px" oninput="filterIrrelevantList()">
+      <select id="irrelevant-filter-type" class="filter-select" style="font-size:12px" onchange="filterIrrelevantList()">
+        <option value="">Semua Jenis</option>
+        <option value="lu">Lapus Tidak Relevan</option>
+        <option value="pe">Pengeluaran Tidak Relevan</option>
+        <option value="both">Keduanya Tidak Relevan</option>
+      </select>
+      <span id="irrelevant-modal-count" style="font-size:12px;color:var(--text-muted)"></span>
+    </div>
+    <div style="max-height:480px;overflow-y:auto;padding:12px 24px" id="irrelevant-modal-list"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeIrrelevantModal()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST CONTAINER ══ -->
+<div class="toast-container" id="toast-container"></div>
+
+<script src="/static/js/theme.js"></script>
+<script src="/static/js/dashboard.js"></script>
+</body>
+</html>

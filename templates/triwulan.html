@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="starry" data-mode="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analisis Event & Lembaga Triwulanan | Pohuwato News Intelligence</title>
+  <meta name="description" content="Monitoring Event Masal Berdampak Ekonomi & Lembaga/Perusahaan per Triwulan di Kabupaten Pohuwato.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/themes.css">
+  <script>
+    (function(){
+      var t = localStorage.getItem('app-theme') || 'starry';
+      var m = localStorage.getItem('app-mode')  || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+      document.documentElement.setAttribute('data-mode', m);
+    })();
+  </script>
+  <style>
+    .q-main { max-width: 1400px; margin: 0 auto; padding: 28px 24px 60px; }
+    
+    /* Stats Row */
+    .q-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    @media(max-width: 960px) { .q-stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media(max-width: 520px) { .q-stats-grid { grid-template-columns: 1fr; } }
+
+    /* Tables Grid */
+    .q-tables-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 16px;
+    }
+    @media(max-width: 1024px) { .q-tables-grid { grid-template-columns: 1fr; } }
+
+    .q-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .q-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .q-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .q-table-wrap {
+      overflow-x: auto;
+      flex: 1;
+    }
+
+    .q-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+    .q-table th {
+      background: var(--bg-secondary);
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .q-table td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-primary);
+      vertical-align: middle;
+    }
+    .q-table tr:hover td {
+      background: var(--bg-card-hover);
+    }
+
+    .badge-ref-count {
+      background: #e0f2fe;
+      color: #0284c7;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .badge-quarter-pill {
+      background: #fef3c7;
+      color: #d97706;
+      padding: 3px 7px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .btn-view-ref {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .btn-view-ref:hover {
+      background: var(--emerald);
+      color: #ffffff;
+      border-color: var(--emerald);
+      box-shadow: 0 2px 8px rgba(5,150,105,0.25);
+    }
+
+    /* Pop-Up Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .modal-backdrop.active { display: flex; animation: fadeIn 0.2s ease-out; }
+
+    .modal-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      width: 100%;
+      max-width: 720px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-box-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      background: var(--bg-secondary);
+    }
+
+    .modal-box-body {
+      padding: 20px 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .ref-news-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      background: var(--bg-card);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .ref-news-card:hover {
+      border-color: var(--emerald);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+    .ref-news-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-decoration: none;
+      line-height: 1.4;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .ref-news-title:hover {
+      color: var(--emerald);
+    }
+    .ref-news-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .ref-news-summary {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      background: var(--bg-secondary);
+      padding: 8px 12px;
+      border-radius: 6px;
+      border-left: 3px solid var(--emerald);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ NAVBAR ══ -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <div class="nav-logo">🎪</div>
+    <div>
+      <div class="nav-title">Analisis Event & Lembaga Triwulanan</div>
+      <div class="nav-subtitle">Kabupaten Pohuwato • Ekstraksi Berita Otomatis</div>
+    </div>
+  </div>
+
+  <div class="nav-actions">
+    <a href="/" class="btn btn-ghost btn-sm">📰 Dashboard Utama (PDRB)</a>
+    <button class="btn btn-ghost btn-sm" id="btn-refresh" onclick="loadData()">🔄 Refresh</button>
+    <button class="btn btn-emerald btn-sm" id="btn-backfill" onclick="triggerBackfill()">⚡ Ekstrak Berita Lama</button>
+  </div>
+</nav>
+
+<!-- ══ MAIN CONTENT ══ -->
+<main class="q-main">
+
+  <!-- Header Info -->
+  <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:20px; flex-wrap:wrap; gap:16px;">
+    <div>
+      <h1 style="font-size:22px; font-weight:800; color:var(--text-primary); margin-bottom:4px;">
+        📊 Monitoring Triwulanan
+      </h1>
+      <p style="font-size:13px; color:var(--text-muted); margin:0;">
+        Event masal yang berdampak ekonomi dan lembaga/perusahaan yang aktif diberitakan di setiap triwulan.
+      </p>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar" style="margin:0; background:transparent; padding:0; border:none; gap:10px;">
+      <div class="search-wrapper" style="width:260px;">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" id="search-entity" placeholder="Cari nama event / lembaga…" oninput="filterEntitiesLocal()">
+      </div>
+      <select class="filter-select" id="filter-year" onchange="loadData()">
+        <option value="">Semua Tahun</option>
+        <option value="2026" selected>Tahun 2026</option>
+        <option value="2025">Tahun 2025</option>
+        <option value="2024">Tahun 2024</option>
+      </select>
+      <select class="filter-select" id="filter-quarter" onchange="loadData()">
+        <option value="">Semua Triwulan</option>
+        <option value="Q1">Triwulan 1 (Jan - Mar)</option>
+        <option value="Q2">Triwulan 2 (Apr - Jun)</option>
+        <option value="Q3">Triwulan 3 (Jul - Sep)</option>
+        <option value="Q4">Triwulan 4 (Okt - Des)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Metric Stats -->
+  <div class="q-stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">🎪</div>
+      <div class="stat-value" id="stat-total-events">—</div>
+      <div class="stat-label">Total Event Masal</div>
+    </div>
+    <div class="stat-card gold">
+      <div class="stat-icon">🏢</div>
+      <div class="stat-value" id="stat-total-companies">—</div>
+      <div class="stat-label">Total Lembaga / Perusahaan</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-icon">📰</div>
+      <div class="stat-value" id="stat-total-refs">—</div>
+      <div class="stat-label">Total Tautan Berita</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🗓️</div>
+      <div class="stat-value" id="stat-active-period" style="font-size:20px; font-weight:700;">Semua</div>
+      <div class="stat-label">Periode Filter Aktif</div>
+    </div>
+  </div>
+
+  <!-- Tables Grid: Event & Lembaga Terpisah -->
+  <div class="q-tables-grid">
+
+    <!-- TABEL 1: EVENT MASAL -->
+    <div class="q-card">
+      <div class="q-card-header">
+        <div class="q-card-title">
+          <span>🎪</span> Tabel Event Masal & Berdampak Ekonomi
+        </div>
+        <span class="badge-ref-count" id="count-events-badge">0 Event</span>
+      </div>
+      <div class="q-table-wrap">
+        <table class="q-table">
+          <thead>
+            <tr>
+              <th style="width:40px;">No</th>
+              <th>Nama Event Masal</th>
+              <th style="width:100px;">Triwulan</th>
+              <th style="width:110px;">Kemunculan</th>
+              <th style="width:110px; text-align:center;">Referensi</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-events">
+            <tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">Memuat data event...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TABEL 2: PERUSAHAAN / LEMBAGA -->
+    <div class="q-card">
+      <div class="q-card-header">
+        <div class="q-card-title">
+          <span>🏢</span> Tabel Perusahaan & Lembaga Terlibat
+        </div>
+        <span class="badge-ref-count" id="count-companies-badge">0 Lembaga</span>
+      </div>
+      <div class="q-table-wrap">
+        <table class="q-table">
+          <thead>
+            <tr>
+              <th style="width:40px;">No</th>
+              <th>Nama Lembaga / Perusahaan</th>
+              <th style="width:100px;">Triwulan</th>
+              <th style="width:110px;">Kemunculan</th>
+              <th style="width:110px; text-align:center;">Referensi</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-companies">
+            <tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">Memuat data lembaga...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- ══ POP-UP MODAL REFERENSI BERITA ══ -->
+<div class="modal-backdrop" id="refModal" onclick="handleBackdropClick(event)">
+  <div class="modal-box" id="modalBox">
+    <div class="modal-box-header">
+      <div>
+        <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); font-weight:700;">
+          Daftar Referensi Berita Asli
+        </div>
+        <div id="modalEntityTitle" style="font-size:17px; font-weight:800; color:var(--text-primary); margin-top:2px;"></div>
+        <div id="modalEntityPeriod" style="font-size:12px; color:var(--emerald); font-weight:600; margin-top:2px;"></div>
+      </div>
+      <button onclick="closeModal()" class="btn btn-ghost btn-sm" style="padding:4px 8px; border-radius:50%; font-size:16px;">✕</button>
+    </div>
+
+    <div class="modal-box-body" id="modalArticlesList">
+      <div style="text-align:center; padding:40px; color:var(--text-muted);">Memuat referensi berita...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCRIPT ══ -->
+<script>
+let rawEvents = [];
+let rawCompanies = [];
+
+async function loadData() {
+  const year = document.getElementById('filter-year').value;
+  const quarter = document.getElementById('filter-quarter').value;
+
+  // Update Period Label
+  let periodText = "Semua";
+  if (year && quarter) periodText = `${quarter} ${year}`;
+  else if (year) periodText = `Tahun ${year}`;
+  else if (quarter) periodText = `Semua (${quarter})`;
+  document.getElementById('stat-active-period').textContent = periodText;
+
+  document.getElementById('tbody-events').innerHTML = `<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">Memuat data event...</td></tr>`;
+  document.getElementById('tbody-companies').innerHTML = `<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">Memuat data lembaga...</td></tr>`;
+
+  try {
+    const res = await fetch(`/api/triwulan/data?year=${year}&quarter=${quarter}`);
+    const data = await res.json();
+
+    rawEvents = data.events || [];
+    rawCompanies = data.companies || [];
+
+    // Calculate totals
+    const totalRefsEvents = rawEvents.reduce((acc, curr) => acc + (curr.total_references || 0), 0);
+    const totalRefsCompanies = rawCompanies.reduce((acc, curr) => acc + (curr.total_references || 0), 0);
+
+    document.getElementById('stat-total-events').textContent = rawEvents.length.toLocaleString('id-ID');
+    document.getElementById('stat-total-companies').textContent = rawCompanies.length.toLocaleString('id-ID');
+    document.getElementById('stat-total-refs').textContent = (totalRefsEvents + totalRefsCompanies).toLocaleString('id-ID');
+
+    document.getElementById('count-events-badge').textContent = `${rawEvents.length} Event`;
+    document.getElementById('count-companies-badge').textContent = `${rawCompanies.length} Lembaga`;
+
+    renderTables(rawEvents, rawCompanies);
+  } catch (err) {
+    console.error("Error loadData:", err);
+    document.getElementById('tbody-events').innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--red-accent);">Gagal memuat data event.</td></tr>`;
+    document.getElementById('tbody-companies').innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--red-accent);">Gagal memuat data lembaga.</td></tr>`;
+  }
+}
+
+function renderTables(events, companies) {
+  // Render Events Table
+  const tbodyEv = document.getElementById('tbody-events');
+  if (events.length === 0) {
+    tbodyEv.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada data event untuk periode ini.</td></tr>`;
+  } else {
+    tbodyEv.innerHTML = events.map((ev, idx) => `
+      <tr>
+        <td style="color:var(--text-muted);">${idx + 1}</td>
+        <td><strong style="color:var(--text-primary);">${escapeHtml(ev.nama_event)}</strong></td>
+        <td><span class="badge-quarter-pill">${ev.triwulan} ${ev.tahun}</span></td>
+        <td><span class="badge-ref-count">📰 ${ev.total_references} Berita</span></td>
+        <td style="text-align:center;">
+          <button class="btn-view-ref" onclick="openRefModal('event', ${ev.id})">
+            🔍 Berita (${ev.total_references})
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // Render Companies Table
+  const tbodyComp = document.getElementById('tbody-companies');
+  if (companies.length === 0) {
+    tbodyComp.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada data lembaga untuk periode ini.</td></tr>`;
+  } else {
+    tbodyComp.innerHTML = companies.map((c, idx) => `
+      <tr>
+        <td style="color:var(--text-muted);">${idx + 1}</td>
+        <td><strong style="color:var(--text-primary);">${escapeHtml(c.nama_lembaga)}</strong></td>
+        <td><span class="badge-quarter-pill">${c.triwulan} ${c.tahun}</span></td>
+        <td><span class="badge-ref-count">📰 ${c.total_references} Berita</span></td>
+        <td style="text-align:center;">
+          <button class="btn-view-ref" onclick="openRefModal('company', ${c.id})">
+            🔍 Berita (${c.total_references})
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  }
+}
+
+function filterEntitiesLocal() {
+  const query = document.getElementById('search-entity').value.toLowerCase().trim();
+  if (!query) {
+    renderTables(rawEvents, rawCompanies);
+    return;
+  }
+  const filteredEvents = rawEvents.filter(e => e.nama_event.toLowerCase().includes(query));
+  const filteredCompanies = rawCompanies.filter(c => c.nama_lembaga.toLowerCase().includes(query));
+  renderTables(filteredEvents, filteredCompanies);
+}
+
+async function openRefModal(type, id) {
+  const modal = document.getElementById('refModal');
+  const titleEl = document.getElementById('modalEntityTitle');
+  const periodEl = document.getElementById('modalEntityPeriod');
+  const listEl = document.getElementById('modalArticlesList');
+
+  modal.classList.add('active');
+  titleEl.textContent = "Memuat entitas...";
+  periodEl.textContent = "";
+  listEl.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">Memuat referensi berita...</div>`;
+
+  try {
+    const res = await fetch(`/api/triwulan/references?type=${type}&id=${id}`);
+    const data = await res.json();
+
+    titleEl.textContent = data.entity_name || 'Entitas';
+    periodEl.textContent = `Periode: ${data.period || '-'}`;
+
+    if (!data.articles || data.articles.length === 0) {
+      listEl.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada artikel berita yang tertaut.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = data.articles.map(art => `
+      <div class="ref-news-card">
+        <a href="${art.url}" target="_blank" rel="noopener" class="ref-news-title">
+          ${escapeHtml(art.title)} <span style="font-size:12px;">↗</span>
+        </a>
+        <div class="ref-news-meta">
+          <span>🗓️ ${art.published_at ? art.published_at.substring(0, 16) : '-'}</span>
+          <span>📰 <strong>${escapeHtml(art.source_media || '-')}</strong></span>
+          ${art.category ? `<span>🏷️ ${escapeHtml(art.category)}</span>` : ''}
+        </div>
+        ${art.summary ? `<div class="ref-news-summary">${escapeHtml(art.summary)}</div>` : ''}
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error("Error openRefModal:", err);
+    listEl.innerHTML = `<div style="text-align:center; padding:30px; color:var(--red-accent);">Gagal memuat referensi berita.</div>`;
+  }
+}
+
+function closeModal() {
+  document.getElementById('refModal').classList.remove('active');
+}
+
+function handleBackdropClick(e) {
+  if (e.target.id === 'refModal') {
+    closeModal();
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
+
+async function triggerBackfill() {
+  if (!confirm("Jalankan ekstraksi Event & Lembaga untuk seluruh berita yang sudah tersimpan di database sekarang?")) {
+    return;
+  }
+  const btn = document.getElementById('btn-backfill');
+  btn.disabled = true;
+  btn.textContent = "⏳ Memproses...";
+
+  try {
+    const res = await fetch("/api/triwulan/backfill", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    alert(data.message || "Proses ekstraksi dimulai di background.");
+  } catch (e) {
+    alert("Gagal memicu ekstraksi: " + e);
+  } finally {
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = "⚡ Ekstrak Berita Lama";
+      loadData();
+    }, 2000);
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+window.addEventListener('DOMContentLoaded', loadData);
+</script>
+
+</body>
+</html>
