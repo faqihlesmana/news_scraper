@@ -72,8 +72,12 @@ class PostgresConnectionWrapper:
 
 def get_connection():
     if IS_POSTGRES:
-        conn = psycopg2.connect(_PG_URL)
-        return PostgresConnectionWrapper(conn)
+        try:
+            conn = psycopg2.connect(_PG_URL)
+            return PostgresConnectionWrapper(conn)
+        except Exception as e:
+            logger.error(f"[DB] Gagal koneksi ke Supabase: {e}")
+            raise
     elif os.environ.get("VERCEL"):
         raise RuntimeError(
             "DATABASE_URL belum dikonfigurasi di Environment Variables Vercel! "
