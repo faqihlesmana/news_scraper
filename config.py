@@ -14,7 +14,13 @@ BASE_DIR = Path(__file__).parent
 
 # ── Database ──────────────────────────────────────────────
 DB_PATH = BASE_DIR / "data" / "news_scraper.db"
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
+DATABASE_URL = (
+    os.environ.get("DATABASE_URL")
+    or os.environ.get("POSTGRES_URL")
+    or os.environ.get("SUPABASE_DATABASE_URL")
+    or os.environ.get("POSTGRES_PRISMA_URL")
+    or ""
+).strip().strip('"').strip("'")
 
 # ── Gemini API (fallback / optional) ────────────────────
 # Set via environment variable:  export GEMINI_API_KEY="your-key"

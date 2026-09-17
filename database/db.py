@@ -74,6 +74,12 @@ def get_connection():
     if IS_POSTGRES:
         conn = psycopg2.connect(_PG_URL)
         return PostgresConnectionWrapper(conn)
+    elif os.environ.get("VERCEL"):
+        raise RuntimeError(
+            "DATABASE_URL belum dikonfigurasi di Environment Variables Vercel! "
+            "Silakan buka Vercel Dashboard -> Project Settings -> Environment Variables, "
+            "tambahkan DATABASE_URL dengan Connection String Supabase Anda, lalu lakukan Redeploy."
+        )
     else:
         conn = sqlite3.connect(str(DB_PATH))
         conn.row_factory = sqlite3.Row
