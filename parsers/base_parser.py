@@ -303,6 +303,7 @@ def find_article_next_page(soup: BeautifulSoup, current_url: str,
         for sel in [
             "a.next", "[class*='next-page']", "a[rel='next']",
             ".page-numbers.next", "[class*='pagination-next']",
+            "a[aria-label*='next']", ".page-nav a[aria-label*='next']",
         ]:
             el = content_el.select_one(sel)
             if el and el.get("href"):
@@ -321,7 +322,7 @@ def find_article_next_page(soup: BeautifulSoup, current_url: str,
     # Strategy 3: Check if there's a "Page X of Y" indicator and numbered links
     # Pattern: look for .page-numbers or .wp-pagenavi OUTSIDE content but
     # only if the page indicator clearly says we're not on the last page
-    for page_container in soup.select(".page-numbers, .wp-pagenavi, [class*='pagenavi'], [class*='page-links']"):
+    for page_container in soup.select(".page-numbers, .wp-pagenavi, [class*='pagenavi'], [class*='page-links'], .page-nav"):
         # Find the currently-active page number
         current_pg_el = page_container.select_one(".current, [aria-current='page']")
         if current_pg_el:

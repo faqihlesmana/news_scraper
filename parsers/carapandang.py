@@ -30,12 +30,15 @@ def parse_article(url: str) -> dict | None:
     if not soup:
         return None
 
-    # carapandang title is in h1 or first strong of content
-    h1 = soup.find("h1")
+    # carapandang article title is in h1.entry-title inside header.td-post-title
+    h1 = soup.select_one("h1.entry-title, .td-post-title h1, header.td-post-title h1")
     title = h1.get_text(strip=True) if h1 else ""
     if not title:
-        title_el = soup.select_one(".td-post-title, [class*='post-title']")
-        title = title_el.get_text(strip=True) if title_el else ""
+        og = soup.find("meta", property="og:title")
+        if og and og.get("content"):
+            title = re.sub(r"^(?:Carapandang|CaraPandang)\s*\|\s*", "", og["content"]).strip()
+    if not title and soup.title:
+        title = re.sub(r"^(?:Carapandang|CaraPandang)\s*\|\s*", "", soup.title.get_text(strip=True)).strip()
 
     author = ""
     for sel in ["[class*='author']", ".td-post-author-name", "[rel='author']"]:
@@ -43,6 +46,7 @@ def parse_article(url: str) -> dict | None:
         if el and el.get_text(strip=True):
             author = re.sub(r"^(penulis|oleh|by)\s*:?\s*", "",
                             el.get_text(strip=True), flags=re.I).strip()
+            author = author.rstrip("-").strip()
             break
 
     date_raw = ""
