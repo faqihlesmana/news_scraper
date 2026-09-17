@@ -1,16 +1,81 @@
+import re
+import logging
 import sqlite3
 from contextlib import contextmanager
-from config import DB_PATH
+from config import DB_PATH, DATABASE_URL
+
+logger = logging.getLogger(__name__)
 
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
+IS_POSTGRES = bool(DATABASE_URL and DATABASE_URL.startswith(("postgres://", "postgresql://")))
 
-def get_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
+if IS_POSTGRES:
+    import psycopg2
+    from psycopg2.extras import DictCursor
+
+    _PG_URL = DATABASE_URL
+    if _PG_URL.startswith("postgres://"):
+        _PG_URL = "postgresql://" + _PG_URL[len("postgres://"):]
+
+
+class PostgresConnectionWrapper:
+    """Wrapper di atas koneksi psycopg2 agar kompatibel dengan sintaks query SQLite."""
+
+    def __init__(self, pg_conn):
+        self._conn = pg_conn
+        self._cur = pg_conn.cursor(cursor_factory=DictCursor)
+
+    def _adapt_sql(self, sql: str, params=None) -> str:
+        if params is not None and isinstance(params, dict):
+            # Ubah :slug -> %(slug)s
+            sql = re.sub(r':([a-zA-Z_][a-zA-Z0-9_]*)', r'%(\1)s', sql)
+        elif params is not None and isinstance(params, (list, tuple)):
+            # Ubah ? -> %s
+            sql = sql.replace("?", "%s")
+        return sql
+
+    def execute(self, sql: str, params=None):
+        if "BEGIN IMMEDIATE" in sql.upper():
+            return self._cur
+        sql = self._adapt_sql(sql, params)
+        if params is not None:
+            self._cur.execute(sql, params)
+        else:
+            self._cur.execute(sql)
+        return self._cur
+
+    def executescript(self, sql: str):
+        self._cur.execute(sql)
+        return self._cur
+
+    def commit(self):
+        self._conn.commit()
+
+    def rollback(self):
+        self._conn.rollback()
+
+    def close(self):
+        try:
+            self._cur.close()
+        except Exception:
+            pass
+        try:
+            self._conn.close()
+        except Exception:
+            pass
+
+
+def get_connection():
+    if IS_POSTGRES:
+        conn = psycopg2.connect(_PG_URL)
+        return PostgresConnectionWrapper(conn)
+    else:
+        conn = sqlite3.connect(str(DB_PATH))
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
 
 
 @contextmanager
@@ -28,6 +93,10 @@ def get_db():
 
 def init_db():
     """Create all tables if they don't exist."""
+    if IS_POSTGRES:
+        logger.info("[DB] Supabase PostgreSQL active. Skema dikelola via database/supabase_schema.sql.")
+        return
+
     with get_db() as conn:
         conn.executescript("""
         CREATE TABLE IF NOT EXISTS sources (
@@ -57,6 +126,7 @@ def init_db():
             exp_subcategory TEXT,        -- PDRB Pengeluaran Sub Category
             confidence    REAL,
             reasoning     TEXT,
+            is_relevant   INTEGER DEFAULT 0,
             scraped_at    DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -130,7 +200,7 @@ def init_db():
         """
         )
         # Migration: tambah kolom jika DB lama belum punya
-        for col_def in ["summary TEXT", "exp_category TEXT", "exp_subcategory TEXT"]:
+        for col_def in ["summary TEXT", "exp_category TEXT", "exp_subcategory TEXT", "is_relevant INTEGER DEFAULT 0"]:
             try:
                 conn.execute(f"ALTER TABLE news ADD COLUMN {col_def}")
                 conn.commit()

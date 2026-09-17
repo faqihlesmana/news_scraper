@@ -752,7 +752,9 @@ async function checkOllamaStatus() {
     const res = await API.ollamaStatus();
     const el = $('ollama-status');
     if (!el) return;
-    if (res.running && res.model_ready) {
+    if (res.cloud_mode) {
+      el.innerHTML = `<span style="color:#10b981">● Cloud Mode</span> <span style="font-size:10px;color:var(--text-muted)">(Supabase + Gemini)</span>`;
+    } else if (res.running && res.model_ready) {
       el.innerHTML = `<span style="color:#10b981">● Ollama Ready</span> <span style="font-size:10px;color:var(--text-muted)">(${res.configured_model})</span>`;
     } else if (res.running && !res.model_ready) {
       el.innerHTML = `<span style="color:#f59e0b">● Ollama Running</span> <span style="font-size:10px;color:var(--text-muted)">model ${res.configured_model} belum di-pull</span>`;

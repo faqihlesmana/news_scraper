@@ -104,7 +104,7 @@ def api_triwulan_backfill_status():
 @app.route("/api/stats")
 def api_stats():
     total        = db_one("SELECT COUNT(*) AS c FROM news")["c"]
-    today        = db_one("SELECT COUNT(*) AS c FROM news WHERE DATE(scraped_at) = DATE('now', 'localtime')")["c"]
+    today        = db_one("SELECT COUNT(*) AS c FROM news WHERE DATE(scraped_at) = CURRENT_DATE")["c"]
     per_source   = db_query("SELECT source_media AS name, COUNT(*) AS count FROM news GROUP BY source_media ORDER BY count DESC")
     per_category = db_query("SELECT COALESCE(category, 'Belum Dikategorikan') AS name, COUNT(*) AS count FROM news GROUP BY name ORDER BY count DESC")
     recent_logs  = db_query("SELECT * FROM scrape_logs ORDER BY run_at DESC LIMIT 10")
@@ -149,10 +149,10 @@ def api_news():
         conditions.append("exp_category = ?")
         params.append(exp_cat)
     if start_date:
-        conditions.append("DATE(COALESCE(published_at, scraped_at)) >= DATE(?)")
+        conditions.append("SUBSTR(COALESCE(published_at, CAST(scraped_at AS TEXT)), 1, 10) >= ?")
         params.append(start_date)
     if end_date:
-        conditions.append("DATE(COALESCE(published_at, scraped_at)) <= DATE(?)")
+        conditions.append("SUBSTR(COALESCE(published_at, CAST(scraped_at AS TEXT)), 1, 10) <= ?")
         params.append(end_date)
     if hide_irrelevant:
         # Exclude articles where BOTH LU and PE are irrelevant/null
@@ -252,13 +252,24 @@ def api_categories():
 
 @app.route("/api/ollama/status")
 def api_ollama_status():
-    """Cek apakah Ollama server aktif dan model tersedia."""
+    """Cek apakah Ollama server aktif atau berjalan di Cloud Mode (Vercel)."""
+    if os.environ.get("VERCEL"):
+        return jsonify({
+            "running": True,
+            "cloud_mode": True,
+            "url": "Supabase Cloud",
+            "configured_model": "Cloud (Gemini API)",
+            "model_ready": True,
+            "available_models": ["gemini-flash-lite"],
+        })
+
     from services.ollama_processor import is_ollama_running, get_available_models
     from config import OLLAMA_MODEL, OLLAMA_BASE_URL
     running = is_ollama_running()
     models  = get_available_models() if running else []
     return jsonify({
         "running":       running,
+        "cloud_mode":     False,
         "url":           OLLAMA_BASE_URL,
         "configured_model": OLLAMA_MODEL,
         "model_ready":   any(OLLAMA_MODEL in m for m in models),
